@@ -5,11 +5,51 @@ import { randomUUID } from 'crypto'
 
 export async function transactionsRoutes(app: FastifyInstance) {
     
+    app.post('/user', async (request, reply) => {
+
+        const createUser = z.object({
+            user: z.string(),
+            email: z.string()
+        })
+
+        console.log('JSON recebido:', request.body);
+
+        const { user, email } = createUser.parse(request.body)
+
+        let sessionId = request.cookies.sessionId
+
+        if(!sessionId) {
+            sessionId = randomUUID()
+
+            reply.cookie('sessionId', sessionId, {
+                path: '/user',
+                maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+            })
+        }
+
+        await knex('usermeal').insert({
+            id: randomUUID(),
+            user,
+            email,
+            session_id: sessionId,
+        })
+
+        return reply.status(201).send()
+    })
+
     app.get('/', async () => {
         const meals = await knex('meal').select()
 
         return { 
             meals
+        }
+    })
+
+    app.get('/userlist', async () => {
+        const usermeals = await knex('usermeal').select()
+
+        return { 
+            usermeals
         }
     })
 
@@ -25,7 +65,7 @@ export async function transactionsRoutes(app: FastifyInstance) {
         return { meal }
     })
     
-    app.post('/', async (request, reply) => {
+    app.post('/createdmeal', async (request, reply) => {
         
         const createMealBodySchema = z.object({
             name: z.string(), 
